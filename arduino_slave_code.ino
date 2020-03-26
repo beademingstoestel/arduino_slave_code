@@ -131,9 +131,7 @@ void setup() {
     if (newData1 == true) {
       //processSerialPort(receivedChars1);
       if (receivedChars1[0] == 'O' && receivedChars1[1] == 'K') {
-        Serial.println("Joepie!");
-        //  newData1 = false;
-        //   break;
+        //        Serial.println("Joepie!");
       } else {
         Serial.print(receivedChars1);
         newData1 = false;
@@ -145,7 +143,6 @@ void setup() {
       buttons[i] = 1;
     }
     serialSend();
-
   }
 
 
@@ -198,7 +195,6 @@ void loop() {
   while (Serial.available() > 0) {
     recvWithEndMarkerSer0(); //keep looking
     if (newData0 == true) {
-      //processSerialPort(receivedChars1);
       if (receivedChars0[0] == 'A')
       { //als hij A ontvangt
 
@@ -215,7 +211,7 @@ void loop() {
           al = 0;
         }
       } else { //als hij iets anders ontvangt
-        break;
+        break; //ik denk dat deze else weg mag.
       }
 
     }
@@ -233,11 +229,11 @@ void loop() {
   //iedere seconde data dumpen
   k++;
   al++;
-if (al>100)
-{
-  alarm = true;
+  if (al > 100)
+  {
+    alarm = true;
   }
-  
+
   if (k > 9) {
     //dump all data
     for (int i = 0; i < numButtons; i++) {
