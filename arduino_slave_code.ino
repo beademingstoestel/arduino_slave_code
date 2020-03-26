@@ -29,7 +29,7 @@ unsigned int RR = 0;    // Number of breaths per minute setting
 unsigned int VT = 0;    // Tidal volume= target to deliver
 unsigned int PK = 50;   //Peak pressure
 unsigned int TS = 0;    // Breath Trigger Sensitivity = amount the machine should look for
-float IE = 0;           // Inspiration-expiration rate
+unsigned int IE = 1;           // Inspiration-expiration rate
 // unsigned int PP = 0;    // PEEP Pressure = Max pressure to deliver --> Manueel instellen op peep valve
 
 unsigned int ADPK = 10; // Allowed Deviation Peak pressure
@@ -257,10 +257,13 @@ void buttonsRead() {
   //TS
   TS = TS +  buttons[POS_TRIG_UP] * jumpValue(POS_TRIG_UP);
   TS = TS -  buttons[POS_TRIG_DOWN] * jumpValue(POS_TRIG_DOWN);
-  //IE
-  IE = IE + 0.1 * buttons[POS_IE_UP];
-  IE = IE - 0.1 * buttons[POS_IE_DOWN];
-
+  //IE 
+  if (IE < 3) {
+    IE = IE + buttons[POS_IE_UP];
+  }
+  if (IE > 1) {
+    IE = IE - buttons[POS_IE_DOWN];
+  }
   // ADPK
   ADPK = ADPK +  buttons[POS_PRESSURE_ALARM_UP] * jumpValue(POS_PRESSURE_ALARM_UP);
   ADPK = ADPK -  buttons[POS_PRESSURE_ALARM_DOWN] * jumpValue(POS_PRESSURE_ALARM_DOWN);
@@ -417,7 +420,7 @@ void printValues() {
   //  lcd.print(PP);
   lcd.setCursor(7, 2);
   lcd.print(ADPP);
-  lcd.setCursor(15, 3);
+  lcd.setCursor(17, 3);
   lcd.print(IE);
 }
 void printLetters()
@@ -434,6 +437,8 @@ void printLetters()
   //  lcd.print("PP");
   lcd.setCursor(12, 3);
   lcd.print("IE");
+  lcd.setCursor(15, 3);
+  lcd.print("1/");
 }
 
 void clearValues()
@@ -456,8 +461,8 @@ void clearValues()
   lcd.print("   ");
   lcd.setCursor(7, 2);
   lcd.print("   ");
-  lcd.setCursor(15, 3);
-  lcd.print("   ");
+  lcd.setCursor(17, 3);
+  lcd.print(" ");
 }
 
 void recvWithEndMarkerSer1() {
