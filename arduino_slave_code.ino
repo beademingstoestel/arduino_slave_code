@@ -111,9 +111,10 @@ int buttons [numButtons] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 
 
 bool test = false;
+bool alarm = false;
 
 void setup() {
-  //for debugging
+
   Serial.begin(115200);
   Serial.println("Init LCD");
   //init LCD
@@ -122,25 +123,29 @@ void setup() {
   //print values void
   Serial.println("Print letters");
   printLetters();
+  
+    Serial.println("Wacht op OK");
+      while(newData1 == 0 ){
+         recvWithEndMarkerSer1(); //keep looking
+         if (newData1 == true){
+           //processSerialPort(receivedChars1);
+           if (receivedChars1[0] == 'O' && receivedChars1[1] == 'K'){
+             Serial.println("Joepie!");
+             break;
+           } else {
+            Serial.print(receivedChars1);
+             newData1 = false;
+           }
 
-  /*Serial.println("Wacht op OK");
-    while(newData1 == 0 ){
-       recvWithEndMarkerSer1();
-       if (newData1 == true){
-         //processSerialPort(receivedChars1);
-         if (receivedChars1 == 'OK'){
-           Serial.println("Joepie!");
-         } else {
-           newData1 = false;
          }
-
-       }
-       for (int i = 0; i < numButtons; i++) {
-         buttons[i]=1;
-       }
-       serialSend();
-    }
-  */
+         //dump all data
+         for (int i = 0; i < numButtons; i++) {
+           buttons[i]=1;
+         }
+         serialSend();
+     
+      }
+  
 
 
 
@@ -188,7 +193,9 @@ void loop() {
   //Update screen
   printValues();
 
-
+  if (alarm) {
+    alarmke();
+  }
   delay(100);
 
 }
@@ -247,17 +254,23 @@ void buttonsRead() {
   //make the buttons edit the values
   //RR
   RR = RR +  buttons[POS_RR_UP] * jumpValue(POS_RR_UP);
-  RR = RR -  buttons[POS_RR_DOWN] * jumpValue(POS_RR_DOWN);
+  if (RR > 1) {
+    RR = RR -  buttons[POS_RR_DOWN] * jumpValue(POS_RR_DOWN);
+  }
   // VT
+
   VT = VT +  buttons[POS_VOLUME_UP] * jumpValue(POS_VOLUME_UP);
-  VT = VT -  buttons[POS_VOLUME_DOWN] * jumpValue(POS_VOLUME_DOWN);
-  // PK
+  if (VT > 1) {
+    VT = VT -  buttons[POS_VOLUME_DOWN] * jumpValue(POS_VOLUME_DOWN);
+  }  // PK
   PK = PK +  buttons[POS_PRESSURE_UP] * jumpValue(POS_PRESSURE_UP);
-  PK = PK -  buttons[POS_PRESSURE_DOWN] * jumpValue(POS_PRESSURE_DOWN);
-  //TS
+  if (PK > 1) {
+    PK = PK -  buttons[POS_PRESSURE_DOWN] * jumpValue(POS_PRESSURE_DOWN);
+  }//TS
   TS = TS +  buttons[POS_TRIG_UP] * jumpValue(POS_TRIG_UP);
-  TS = TS -  buttons[POS_TRIG_DOWN] * jumpValue(POS_TRIG_DOWN);
-  //IE 
+  if (TS > 1) {
+    TS = TS -  buttons[POS_TRIG_DOWN] * jumpValue(POS_TRIG_DOWN);
+  }//IE
   if (IE < 3) {
     IE = IE + buttons[POS_IE_UP];
   }
@@ -265,15 +278,19 @@ void buttonsRead() {
     IE = IE - buttons[POS_IE_DOWN];
   }
   // ADPK
-  ADPK = ADPK +  buttons[POS_PRESSURE_ALARM_UP] * jumpValue(POS_PRESSURE_ALARM_UP);
-  ADPK = ADPK -  buttons[POS_PRESSURE_ALARM_DOWN] * jumpValue(POS_PRESSURE_ALARM_DOWN);
-  // ADVT
-  ADVT = ADVT +  buttons[POS_VOLUME_ALARM_UP] * jumpValue(POS_VOLUME_ALARM_UP);
-  ADVT = ADVT -  buttons[POS_VOLUME_ALARM_DOWN] * jumpValue(POS_VOLUME_ALARM_DOWN);
-  // ADPP
-  ADPP = ADPP +  buttons[POS_PEEP_ALARM_UP] * jumpValue(POS_PEEP_ALARM_UP);
-  ADPP = ADPP -  buttons[POS_PEEP_ALARM_DOWN] * jumpValue(POS_PEEP_ALARM_DOWN);
 
+  ADPK = ADPK +  buttons[POS_PRESSURE_ALARM_UP] * jumpValue(POS_PRESSURE_ALARM_UP);
+  if (ADPK > 1) {
+    ADPK = ADPK -  buttons[POS_PRESSURE_ALARM_DOWN] * jumpValue(POS_PRESSURE_ALARM_DOWN);
+  } // ADVT
+  ADVT = ADVT +  buttons[POS_VOLUME_ALARM_UP] * jumpValue(POS_VOLUME_ALARM_UP);
+  if (ADVT > 1) {
+    ADVT = ADVT -  buttons[POS_VOLUME_ALARM_DOWN] * jumpValue(POS_VOLUME_ALARM_DOWN);
+  }// ADPP
+  ADPP = ADPP +  buttons[POS_PEEP_ALARM_UP] * jumpValue(POS_PEEP_ALARM_UP);
+  if (ADPP > 1) {
+    ADPP = ADPP -  buttons[POS_PEEP_ALARM_DOWN] * jumpValue(POS_PEEP_ALARM_DOWN);
+  }
   //mode button here
   //if mode is VOLUME and button is pressed: goto PRESSURE
   if (buttons[POS_MODE] == 1)
@@ -466,23 +483,46 @@ void clearValues()
 }
 
 void recvWithEndMarkerSer1() {
+  //this waits for confirmation over serial that the data is OK
+
   static byte ndx = 0;
   char endMarker = '\n';
   char rc;
+  //if there is still data in the tube
   while (Serial.available() > 0 && newData1 == false) {
-    rc = Serial.read();
-    if (rc != endMarker) {
-      receivedChars1[ndx] = rc;
-      ndx++;
+    rc = Serial.read(); //keep reading
+    if (rc != endMarker) { //if there is no endmarker detected
+      receivedChars1[ndx] = rc; //put chars in array
+      ndx++; //make array larger
       if (ndx >= numChars) {
         ndx = numChars - 1;
       }
-    }
-    else {
+    } else { //endmarker received
       receivedChars1[ndx] = '\0'; // terminate the string
       ndx = 0;
       newData1 = true;
       Serial.println(receivedChars1);
     }
   }
+}
+
+void alarmke()
+{
+  /*
+    # 1    (1 << 0) Mechanical failure
+    # 2    (1 << 1) Power loss
+    # 4    (1 << 2) Watchdog Timout (connection loss)
+    # 8    (1 << 3) no pressure
+    # 16   (1 << 4) no flow
+    # 32   (1 << 5) peak pressure deviation exceeded
+    # 64   (1 << 6) peep deviation exceeded
+    # 128  (1 << 7) volume deviation exceeded
+    # 256  (1 << 8) trigger timeout
+  */
+  //zolang mute alarm niet wordt gedrukt
+  //lcd flikkert
+  //"alarm" komt op LCD
+  //type alarm komt op LCD
+  
+
 }

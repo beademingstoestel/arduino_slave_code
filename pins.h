@@ -40,7 +40,7 @@
 #define BUTTON_VOLUME_ALARM_UP 37 // NEW
 
 #define BUTTON_PEEP_ALARM_DOWN 43 // NEW
-#define BUTTON_PEEP_ALARM_UP 44 // NEW
+#define BUTTON_PEEP_ALARM_UP 42 //44 // NEW Tim heeft verkeerd gewired
 
 #define BUTTON_IE_DOWN A5 //45 // NEW
 #define BUTTON_IE_UP A0 //46 // NEW
