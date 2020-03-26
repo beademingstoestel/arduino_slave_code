@@ -29,7 +29,7 @@ unsigned int RR = 0;    // Number of breaths per minute setting
 unsigned int VT = 0;    // Tidal volume= target to deliver
 unsigned int PK = 50;   //Peak pressure
 unsigned int TS = 0;    // Breath Trigger Sensitivity = amount the machine should look for
-float IE = 0;           // Inspiration-expiration rate
+unsigned int IE = 1;           // Inspiration-expiration rate
 // unsigned int PP = 0;    // PEEP Pressure = Max pressure to deliver --> Manueel instellen op peep valve
 
 unsigned int ADPK = 10; // Allowed Deviation Peak pressure
@@ -52,10 +52,14 @@ int buttonState;             // the current reading from the input pin
 unsigned long debounceDelay = 50; // the debounce time; increase if the output flickers
 uint32_t lastRequestedValueTime = 0;
 uint32_t loopMillis;
-
+int k = 0;
+int al = 0;
 const int numButtons = 20;
-unsigned long lastDebounceTime[2][numButtons] = {{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 
-  {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}}; // the last time the output pin was toggled
+unsigned long lastDebounceTime[2][numButtons] = {{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+  {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+}; // the last time the output pin was toggled & the time the button was pressed the first time
+
+
 //make an array with all button pins and last button state
 int buttonPins[2][numButtons] = { {
     BUTTON_VOLUME_DOWN,
@@ -102,45 +106,51 @@ int buttons [numButtons] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 #define POS_VOLUME_ALARM_DOWN   14
 #define POS_VOLUME_ALARM_UP     15
 #define POS_PEEP_ALARM_DOWN     16
-#define POS_PEEP_ALARM_UP       17
+#define POS_PEEP_ALARM_UP       17 // no worky
 #define POS_IE_DOWN             18
 #define POS_IE_UP               19
 
 
 bool test = false;
+bool alarm = false;
 
 void setup() {
-  //for debugging
+
   Serial.begin(115200);
-   Serial.println("Init LCD");
+  Serial.println("Init LCD");
   //init LCD
   lcd.backlight();
   lcd.init();
   //print values void
-   Serial.println("Print letters");
+  Serial.println("Print letters");
   printLetters();
 
- /*Serial.println("Wacht op OK");
-  while(newData1 == 0 ){
-      recvWithEndMarkerSer1();
-      if (newData1 == true){
-        //processSerialPort(receivedChars1);
-        if (receivedChars1 == 'OK'){
-          Serial.println("Joepie!");
-        } else {
-          newData1 = false;
-        }
-        
+  Serial.println("Wacht op OK");
+  while (newData1 == 0 ) {
+    recvWithEndMarkerSer1(); //keep looking
+    if (newData1 == true) {
+      //processSerialPort(receivedChars1);
+      if (receivedChars1[0] == 'O' && receivedChars1[1] == 'K') {
+        Serial.println("Joepie!");
+        //  newData1 = false;
+        //   break;
+      } else {
+        Serial.print(receivedChars1);
+        newData1 = false;
       }
-      for (int i = 0; i < numButtons; i++) {
-        buttons[i]=1;
-      }
-      serialSend();
+
+    }
+    //dump all data
+    for (int i = 0; i < numButtons; i++) {
+      buttons[i] = 1;
+    }
+    serialSend();
+
   }
-*/
 
 
-  
+
+
   //declare all buttons
   pinMode(BUTTON_VOLUME_DOWN, INPUT_PULLUP);
   pinMode(BUTTON_VOLUME_UP, INPUT_PULLUP);
@@ -171,6 +181,7 @@ void loop() {
   buttonsRead();
   //array with buttons is filled with data
 
+
   //edit parameters
 
   //send parameters
@@ -179,12 +190,63 @@ void loop() {
     flag = false;
   }
   delay(10);
-  
+  //      flag = true;
+
   //Update screen
   printValues();
+  //wacht op PC alive: indien niet: alarm
+  while (Serial.available() > 0) {
+    recvWithEndMarkerSer0(); //keep looking
+    if (newData0 == true) {
+      //processSerialPort(receivedChars1);
+      if (receivedChars0[0] == 'A')
+      { //als hij A ontvangt
 
+        newData0 = false;
+        if (alarm) { //als het alarm actief was
+          alarm = false;
+          Serial.print("Back Alive.");
+          al = 0;
+        }
+        else // als het alarm niet actief was
+        {
+          Serial.print("Still Alive.");
+          alarm = false;
+          al = 0;
+        }
+      } else { //als hij iets anders ontvangt
+        break;
+      }
+
+    }
+
+  }
+
+
+
+
+  if (alarm) {
+    alarmke();
+  }
 
   delay(100);
+  //iedere seconde data dumpen
+  k++;
+  al++;
+if (al>100)
+{
+  alarm = true;
+  }
+  
+  if (k > 9) {
+    //dump all data
+    for (int i = 0; i < numButtons; i++) {
+      buttons[i] = 1;
+    }
+    serialSend();
+    k = 0;
+  }
+
 
 }
 
@@ -198,15 +260,15 @@ void buttonsRead() {
     //filter out any noise by setting a time buffer
     if ( (millis() - lastDebounceTime[0][i]) > debounceDelay) {
       if ( reading == HIGH && buttonPins[1][i] != HIGH) {
-        buttonPins[1][i] = LOW;
+        buttonPins[1][i] = reading;
         lastDebounceTime[0][i] = millis(); //set the current time
         lastDebounceTime[1][i] = 0; //reset the first time counter for jumpvalue
       }
       else if ( reading == LOW && buttonPins[1][i] != LOW) {
-        buttonPins[1][i] = HIGH;
+        buttonPins[1][i] = reading;
         lastDebounceTime[0][i] = millis(); //set the current time
 
-        if (lastDebounceTime[1][i] == 0)
+        if (lastDebounceTime[1][i] == 0) //this is for the jumpvalue. if the counter is zero
         {
           lastDebounceTime[1][i] = millis(); //set the current time to the first time counter for jumpvalue
           flag = true;
@@ -216,52 +278,89 @@ void buttonsRead() {
     }//close if(time buffer)
   }
 
-  
+  //Testmodule buttons
+  /*
+    for (int i = 0; i < numButtons; i++)
+    {
+    Serial.print(buttonPins[1][i]);
+    }
+    Serial.println();
+  */
+
+  //invert the numbers
+  for (int i = 0; i < numButtons; i++)
+  {
+    if (buttonPins[1][i] == 0) {
+      buttons[i] = 1;
+    }
+    else {
+      buttons[i] = 0;
+    }
+
+  }
+
+
+
   //make the buttons edit the values
   //RR
   RR = RR +  buttons[POS_RR_UP] * jumpValue(POS_RR_UP);
-  RR = RR -  buttons[POS_RR_DOWN] * jumpValue(POS_RR_DOWN);
+  if (RR > 1) {
+    RR = RR -  buttons[POS_RR_DOWN] * jumpValue(POS_RR_DOWN);
+  }
   // VT
-  VT = VT +  buttons[POS_VOLUME_UP] * jumpValue(POS_VOLUME_UP);
-  VT = VT -  buttons[POS_VOLUME_DOWN] * jumpValue(POS_VOLUME_DOWN);
-  // PK
-  PK = PK +  buttons[POS_PRESSURE_UP] * jumpValue(POS_PRESSURE_UP);
-  PK = PK -  buttons[POS_PRESSURE_DOWN] * jumpValue(POS_PRESSURE_DOWN);
-  //TS
-  TS = TS +  buttons[POS_TRIG_UP] * jumpValue(POS_TRIG_UP);
-  TS = TS -  buttons[POS_TRIG_DOWN] * jumpValue(POS_TRIG_DOWN);
-  //IE
-  IE = IE + 0.1 * buttons[POS_IE_UP];
-  IE = IE - 0.1 * buttons[POS_IE_DOWN];
 
+  VT = VT +  buttons[POS_VOLUME_UP] * jumpValue(POS_VOLUME_UP);
+  if (VT > 1) {
+    VT = VT -  buttons[POS_VOLUME_DOWN] * jumpValue(POS_VOLUME_DOWN);
+  }  // PK
+  PK = PK +  buttons[POS_PRESSURE_UP] * jumpValue(POS_PRESSURE_UP);
+  if (PK > 1) {
+    PK = PK -  buttons[POS_PRESSURE_DOWN] * jumpValue(POS_PRESSURE_DOWN);
+  }//TS
+  TS = TS +  buttons[POS_TRIG_UP] * jumpValue(POS_TRIG_UP);
+  if (TS > 1) {
+    TS = TS -  buttons[POS_TRIG_DOWN] * jumpValue(POS_TRIG_DOWN);
+  }//IE
+  if (IE < 3) {
+    IE = IE + buttons[POS_IE_UP];
+  }
+  if (IE > 1) {
+    IE = IE - buttons[POS_IE_DOWN];
+  }
   // ADPK
+
   ADPK = ADPK +  buttons[POS_PRESSURE_ALARM_UP] * jumpValue(POS_PRESSURE_ALARM_UP);
-  ADPK = ADPK -  buttons[POS_PRESSURE_ALARM_DOWN] * jumpValue(POS_PRESSURE_ALARM_DOWN);
-  // ADVT
+  if (ADPK > 1) {
+    ADPK = ADPK -  buttons[POS_PRESSURE_ALARM_DOWN] * jumpValue(POS_PRESSURE_ALARM_DOWN);
+  } // ADVT
   ADVT = ADVT +  buttons[POS_VOLUME_ALARM_UP] * jumpValue(POS_VOLUME_ALARM_UP);
-  ADVT = ADVT -  buttons[POS_VOLUME_ALARM_DOWN] * jumpValue(POS_VOLUME_ALARM_DOWN);
-  // ADPP
+  if (ADVT > 1) {
+    ADVT = ADVT -  buttons[POS_VOLUME_ALARM_DOWN] * jumpValue(POS_VOLUME_ALARM_DOWN);
+  }// ADPP
   ADPP = ADPP +  buttons[POS_PEEP_ALARM_UP] * jumpValue(POS_PEEP_ALARM_UP);
-  ADPP = ADPP -  buttons[POS_PEEP_ALARM_DOWN] * jumpValue(POS_PEEP_ALARM_DOWN);
-  
+  if (ADPP > 1) {
+    ADPP = ADPP -  buttons[POS_PEEP_ALARM_DOWN] * jumpValue(POS_PEEP_ALARM_DOWN);
+  }
   //mode button here
   //if mode is VOLUME and button is pressed: goto PRESSURE
   if (buttons[POS_MODE] == 1)
   {
     MODE = !MODE;
-    clearValues();
+    delay(50);
   }
 
 
   if (buttons[POS_MUTE] == 1)
   {
     MUTE = !MUTE;
-    clearValues();
+    delay(50);
   }
 
 
   // TODO: hold, mute, start/stop
-  
+  if (flag) {
+    clearValues();
+  }
 
 }
 
@@ -345,7 +444,7 @@ void serialSend()
     Serial.print("ADPP=");
     Serial.println(ADPP);
   }
-    
+
   // MODE
   if (buttons[POS_MODE] == 1) {
     Serial.print("MODE=");
@@ -357,7 +456,7 @@ void serialSend()
     Serial.print("MUTE=");
     Serial.println(MUTE);
   }
-  
+
   // ACTIVE
   if (buttons[POS_START_STOP] == 1) {
     Serial.print("ACTIVE=");
@@ -368,7 +467,7 @@ void serialSend()
 
 /*void serialSendSpecific(){
   Serial.print();
-}*/
+  }*/
 
 void printValues() {
   lcd.setCursor(12, 2);
@@ -386,11 +485,21 @@ void printValues() {
   lcd.print(RR);
   lcd.setCursor(15, 1);
   lcd.print(TS);
-//  lcd.setCursor(3, 2);
-//  lcd.print(PP);
+  //  lcd.setCursor(3, 2);
+  //  lcd.print(PP);
   lcd.setCursor(7, 2);
   lcd.print(ADPP);
-  lcd.setCursor(15, 3);
+  if (MUTE) {
+    lcd.setCursor(0, 2);
+    lcd.print("MUTE");
+  }
+  else {
+    lcd.setCursor(0, 2);
+    lcd.print("    ");
+  }
+
+
+  lcd.setCursor(17, 3);
   lcd.print(IE);
 }
 void printLetters()
@@ -403,10 +512,12 @@ void printLetters()
   lcd.print("RR");
   lcd.setCursor(12, 1);
   lcd.print("TS");
-//  lcd.setCursor(0, 2);
-//  lcd.print("PP");
+  //  lcd.setCursor(0, 2);
+  //  lcd.print("PP");
   lcd.setCursor(12, 3);
   lcd.print("IE");
+  lcd.setCursor(15, 3);
+  lcd.print("1/");
 }
 
 void clearValues()
@@ -429,28 +540,86 @@ void clearValues()
   lcd.print("   ");
   lcd.setCursor(7, 2);
   lcd.print("   ");
-  lcd.setCursor(15, 3);
-  lcd.print("   ");
+  lcd.setCursor(17, 3);
+  lcd.print(" ");
 }
 
 void recvWithEndMarkerSer1() {
-   static byte ndx = 0;
-   char endMarker = '\n';
-   char rc;
-   while (Serial.available() > 0 && newData1 == false) {
-     rc = Serial.read();
-     if (rc != endMarker) {
-       receivedChars1[ndx] = rc;
-       ndx++;
-       if (ndx >= numChars) {
-         ndx = numChars - 1;
-       }
-     }
-     else {
-       receivedChars1[ndx] = '\0'; // terminate the string
-       ndx = 0;
-       newData1 = true;
-       Serial.println(receivedChars1);
-     }
-   }
+  //this waits for confirmation over serial that the data is OK
+
+  static byte ndx = 0;
+  char endMarker = '\n';
+  char rc;
+  //if there is still data in the tube
+  while (Serial.available() > 0 && newData1 == false) {
+    rc = Serial.read(); //keep reading
+    if (rc != endMarker) { //if there is no endmarker detected
+      receivedChars1[ndx] = rc; //put chars in array
+      ndx++; //make array larger
+      if (ndx >= numChars) {
+        ndx = numChars - 1;
+      }
+    } else { //endmarker received
+      receivedChars1[ndx] = '\0'; // terminate the string
+      ndx = 0;
+      newData1 = true;
+      Serial.println(receivedChars1);
+    }
+  }
+}
+
+
+void recvWithEndMarkerSer0() {
+  //this waits for confirmation over serial that the data is OK
+
+  static byte ndx = 0;
+  char endMarker = '\n';
+  char rc;
+  //if there is still data in the tube
+  while (Serial.available() > 0 && newData0 == false) {
+    rc = Serial.read(); //keep reading
+    if (rc != endMarker) { //if there is no endmarker detected
+      receivedChars0[ndx] = rc; //put chars in array
+      ndx++; //make array larger
+      if (ndx >= numChars) {
+        ndx = numChars - 1;
+      }
+    } else { //endmarker received
+      receivedChars0[ndx] = '\0'; // terminate the string
+      ndx = 0;
+      newData0 = true;
+      Serial.println(receivedChars0);
+    }
+  }
+}
+
+void alarmke()
+{
+  /*
+    # 1    (1 << 0) Mechanical failure
+    # 2    (1 << 1) Power loss
+    # 4    (1 << 2) Watchdog Timout (connection loss)
+    # 8    (1 << 3) no pressure
+    # 16   (1 << 4) no flow
+    # 32   (1 << 5) peak pressure deviation exceeded
+    # 64   (1 << 6) peep deviation exceeded
+    # 128  (1 << 7) volume deviation exceeded
+    # 256  (1 << 8) trigger timeout
+  */
+  //zolang mute alarm niet wordt gedrukt
+  while (!MUTE)
+  {
+    //lcd flikkert
+
+    Serial.println("ALARM!");
+    lcd.setCursor(1, 3);
+    lcd.print("ALARM!");
+    //"alarm" komt op LCD
+    //type alarm komt op LCD
+    buttonsRead();
+  }
+  Serial.println("ALARM MUTED");
+  lcd.setCursor(1, 3);
+  lcd.print("       ");
+
 }
