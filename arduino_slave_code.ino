@@ -198,12 +198,12 @@ void buttonsRead() {
     //filter out any noise by setting a time buffer
     if ( (millis() - lastDebounceTime[0][i]) > debounceDelay) {
       if ( reading == HIGH && buttonPins[1][i] != HIGH) {
-        buttonPins[1][i] = reading;
+        buttonPins[1][i] = LOW;
         lastDebounceTime[0][i] = millis(); //set the current time
         lastDebounceTime[1][i] = 0; //reset the first time counter for jumpvalue
       }
       else if ( reading == LOW && buttonPins[1][i] != LOW) {
-        buttonPins[1][i] = reading;
+        buttonPins[1][i] = HIGH;
         lastDebounceTime[0][i] = millis(); //set the current time
 
         if (lastDebounceTime[1][i] == 0)
@@ -216,18 +216,6 @@ void buttonsRead() {
     }//close if(time buffer)
   }
 
-  //change the sign of the buttons
-  for (int j = 0; j < numButtons; j++)
-  {
-    if (buttonPins[1][j] == 0)
-    {
-      buttons[j] = 1;
-    }
-    else
-    {
-      buttons[j] = 0;
-    }
-  }
   
   //make the buttons edit the values
   //RR
