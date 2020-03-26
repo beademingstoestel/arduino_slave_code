@@ -52,7 +52,8 @@ int buttonState;             // the current reading from the input pin
 unsigned long debounceDelay = 50; // the debounce time; increase if the output flickers
 uint32_t lastRequestedValueTime = 0;
 uint32_t loopMillis;
-
+int k = 0;
+int al = 0;
 const int numButtons = 20;
 unsigned long lastDebounceTime[2][numButtons] = {{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
   {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
@@ -123,29 +124,30 @@ void setup() {
   //print values void
   Serial.println("Print letters");
   printLetters();
-  
-    Serial.println("Wacht op OK");
-      while(newData1 == 0 ){
-         recvWithEndMarkerSer1(); //keep looking
-         if (newData1 == true){
-           //processSerialPort(receivedChars1);
-           if (receivedChars1[0] == 'O' && receivedChars1[1] == 'K'){
-             Serial.println("Joepie!");
-             break;
-           } else {
-            Serial.print(receivedChars1);
-             newData1 = false;
-           }
 
-         }
-         //dump all data
-         for (int i = 0; i < numButtons; i++) {
-           buttons[i]=1;
-         }
-         serialSend();
-     
+  Serial.println("Wacht op OK");
+  while (newData1 == 0 ) {
+    recvWithEndMarkerSer1(); //keep looking
+    if (newData1 == true) {
+      //processSerialPort(receivedChars1);
+      if (receivedChars1[0] == 'O' && receivedChars1[1] == 'K') {
+        Serial.println("Joepie!");
+        //  newData1 = false;
+        //   break;
+      } else {
+        Serial.print(receivedChars1);
+        newData1 = false;
       }
-  
+
+    }
+    //dump all data
+    for (int i = 0; i < numButtons; i++) {
+      buttons[i] = 1;
+    }
+    serialSend();
+
+  }
+
 
 
 
@@ -192,11 +194,59 @@ void loop() {
 
   //Update screen
   printValues();
+  //wacht op PC alive: indien niet: alarm
+  while (Serial.available() > 0) {
+    recvWithEndMarkerSer0(); //keep looking
+    if (newData0 == true) {
+      //processSerialPort(receivedChars1);
+      if (receivedChars0[0] == 'A')
+      { //als hij A ontvangt
+
+        newData0 = false;
+        if (alarm) { //als het alarm actief was
+          alarm = false;
+          Serial.print("Back Alive.");
+          al = 0;
+        }
+        else // als het alarm niet actief was
+        {
+          Serial.print("Still Alive.");
+          alarm = false;
+          al = 0;
+        }
+      } else { //als hij iets anders ontvangt
+        break;
+      }
+
+    }
+
+  }
+
+
+
 
   if (alarm) {
     alarmke();
   }
+
   delay(100);
+  //iedere seconde data dumpen
+  k++;
+  al++;
+if (al>100)
+{
+  alarm = true;
+  }
+  
+  if (k > 9) {
+    //dump all data
+    for (int i = 0; i < numButtons; i++) {
+      buttons[i] = 1;
+    }
+    serialSend();
+    k = 0;
+  }
+
 
 }
 
@@ -296,12 +346,14 @@ void buttonsRead() {
   if (buttons[POS_MODE] == 1)
   {
     MODE = !MODE;
+    delay(50);
   }
 
 
   if (buttons[POS_MUTE] == 1)
   {
     MUTE = !MUTE;
+    delay(50);
   }
 
 
@@ -437,6 +489,16 @@ void printValues() {
   //  lcd.print(PP);
   lcd.setCursor(7, 2);
   lcd.print(ADPP);
+  if (MUTE) {
+    lcd.setCursor(0, 2);
+    lcd.print("MUTE");
+  }
+  else {
+    lcd.setCursor(0, 2);
+    lcd.print("    ");
+  }
+
+
   lcd.setCursor(17, 3);
   lcd.print(IE);
 }
@@ -506,6 +568,31 @@ void recvWithEndMarkerSer1() {
   }
 }
 
+
+void recvWithEndMarkerSer0() {
+  //this waits for confirmation over serial that the data is OK
+
+  static byte ndx = 0;
+  char endMarker = '\n';
+  char rc;
+  //if there is still data in the tube
+  while (Serial.available() > 0 && newData0 == false) {
+    rc = Serial.read(); //keep reading
+    if (rc != endMarker) { //if there is no endmarker detected
+      receivedChars0[ndx] = rc; //put chars in array
+      ndx++; //make array larger
+      if (ndx >= numChars) {
+        ndx = numChars - 1;
+      }
+    } else { //endmarker received
+      receivedChars0[ndx] = '\0'; // terminate the string
+      ndx = 0;
+      newData0 = true;
+      Serial.println(receivedChars0);
+    }
+  }
+}
+
 void alarmke()
 {
   /*
@@ -520,9 +607,19 @@ void alarmke()
     # 256  (1 << 8) trigger timeout
   */
   //zolang mute alarm niet wordt gedrukt
-  //lcd flikkert
-  //"alarm" komt op LCD
-  //type alarm komt op LCD
-  
+  while (!MUTE)
+  {
+    //lcd flikkert
+
+    Serial.println("ALARM!");
+    lcd.setCursor(1, 3);
+    lcd.print("ALARM!");
+    //"alarm" komt op LCD
+    //type alarm komt op LCD
+    buttonsRead();
+  }
+  Serial.println("ALARM MUTED");
+  lcd.setCursor(1, 3);
+  lcd.print("       ");
 
 }
