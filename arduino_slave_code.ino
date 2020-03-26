@@ -1,5 +1,5 @@
 //this file is the sketch for the slave Arduino.
-
+//this is a comment
 #include <Arduino.h>
 #include <HardwareSerial.h>
 #include <Print.h>
