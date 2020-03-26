@@ -1,3 +1,5 @@
+//this file is the sketch for the slave Arduino.
+
 #include <Arduino.h>
 #include <HardwareSerial.h>
 #include <Print.h>
@@ -200,12 +202,14 @@ void buttonsRead() {
     //filter out any noise by setting a time buffer
     if ( (millis() - lastDebounceTime[0][i]) > debounceDelay) {
       if ( reading == HIGH && buttonPins[1][i] != HIGH) {
-        buttonPins[1][i] = reading;
+        buttonPins[1][i] = LOW;
+        //because buttons are pulldown, reading is 1 when they are not pressed.
         lastDebounceTime[0][i] = millis(); //set the current time
         lastDebounceTime[1][i] = 0; //reset the first time counter for jumpvalue
       }
       else if ( reading == LOW && buttonPins[1][i] != LOW) {
-        buttonPins[1][i] = reading;
+        buttonPins[1][i] = HIGH; 
+        //buttons are pulldown, reading is 0 when they are pressed
         lastDebounceTime[0][i] = millis(); //set the current time
 
         if (lastDebounceTime[1][i] == 0)
@@ -216,19 +220,6 @@ void buttonsRead() {
 
       }//close if/else
     }//close if(time buffer)
-  }
-
-  //change the sign of the buttons
-  for (int j = 0; j < numButtons; j++)
-  {
-    if (buttonPins[1][j] == 0)
-    {
-      buttons[j] = 1;
-    }
-    else
-    {
-      buttons[j] = 0;
-    }
   }
   
   //make the buttons edit the values
@@ -247,7 +238,6 @@ void buttonsRead() {
   //IE
   IE = IE + 0.1 * buttons[POS_IE_UP];
   IE = IE - 0.1 * buttons[POS_IE_DOWN];
-
   // ADPK
   ADPK = ADPK +  buttons[POS_PRESSURE_ALARM_UP] * jumpValue(POS_PRESSURE_ALARM_UP);
   ADPK = ADPK -  buttons[POS_PRESSURE_ALARM_DOWN] * jumpValue(POS_PRESSURE_ALARM_DOWN);
@@ -263,7 +253,7 @@ void buttonsRead() {
   if (buttons[POS_MODE] == 1)
   {
     MODE = !MODE;
-    clearValues();
+    clearValues(); //clears the display because PRESSURE is more chars than VOLUME
   }
 
 
@@ -281,14 +271,11 @@ void buttonsRead() {
 
 
 int jumpValue(int i) {
-
+//this makes the counter go faster if the button is held.
   //  if (loopMillis - lastRequestedValueTime < 200) {
   //    return 0;
   // }
   //  lastRequestedValueTime = loopMillis;
-  //Serial.println(loopMillis);
-  //Serial.println(lastDebounceTime[1][i]);
-  // Serial.println(loopMillis-lastDebounceTime[1][0]);
 
 
 
@@ -309,6 +296,7 @@ int jumpValue(int i) {
 
 void serialSend()
 {
+//this sends the values over the serial
   // RR
   if ((buttons[POS_RR_UP] == 1) || (buttons[POS_RR_DOWN] == 1)) {
     delay(10);
@@ -385,6 +373,7 @@ void serialSend()
 }*/
 
 void printValues() {
+  //this prints the values on the LCD
   lcd.setCursor(12, 2);
   if (MODE == true) lcd.print("VOLUME");
   if (MODE == false) lcd.print("PRESSURE");
@@ -409,6 +398,7 @@ void printValues() {
 }
 void printLetters()
 {
+  //This prints the letters on the LCD. only used once in the setup
   lcd.setCursor(0, 0);
   lcd.print("PK");
   lcd.setCursor(0, 1);
@@ -425,6 +415,7 @@ void printLetters()
 
 void clearValues()
 {
+  //this clears the values off the LCD
   lcd.setCursor(12, 2);
   lcd.print("        ");
   lcd.setCursor(3, 0);
@@ -448,6 +439,7 @@ void clearValues()
 }
 
 void recvWithEndMarkerSer1() {
+  //this reads the serial
    static byte ndx = 0;
    char endMarker = '\n';
    char rc;
