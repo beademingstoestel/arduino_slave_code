@@ -192,8 +192,8 @@ void loop() {
   //Update screen
   printValues();
   //wacht op PC alive: indien niet: alarm
-  while (Serial.available() > 0) {
-    recvWithEndMarkerSer0(); //keep looking
+  while (Serial1.available() > 0) {
+    recvWithEndMarkerSer1(); //keep looking
     if (newData0 == true) {
       if (receivedChars0[0] == 'A')
       { //als hij A ontvangt
@@ -583,8 +583,8 @@ void recvWithEndMarkerSer0() {
   char endMarker = '\n';
   char rc;
   //if there is still data in the tube
-  while (Serial1.available() > 0 && newData0 == false) {
-    rc = Serial1.read(); //keep reading
+  while (Serial.available() > 0 && newData0 == false) {
+    rc = Serial.read(); //keep reading
     if (rc != endMarker) { //if there is no endmarker detected
       receivedChars0[ndx] = rc; //put chars in array
       ndx++; //make array larger
@@ -595,7 +595,7 @@ void recvWithEndMarkerSer0() {
       receivedChars0[ndx] = '\0'; // terminate the string
       ndx = 0;
       newData0 = true;
-      Serial1.println(receivedChars0);
+      Serial.println(receivedChars0);
     }
   }
 }
