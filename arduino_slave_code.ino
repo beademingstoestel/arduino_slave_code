@@ -54,8 +54,11 @@ uint32_t lastRequestedValueTime = 0;
 uint32_t loopMillis;
 
 const int numButtons = 20;
-unsigned long lastDebounceTime[2][numButtons] = {{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 
-  {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}}; // the last time the output pin was toggled
+unsigned long lastDebounceTime[2][numButtons] = {{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+  {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+}; // the last time the output pin was toggled & the time the button was pressed the first time
+
+
 //make an array with all button pins and last button state
 int buttonPins[2][numButtons] = { {
     BUTTON_VOLUME_DOWN,
@@ -102,7 +105,7 @@ int buttons [numButtons] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 #define POS_VOLUME_ALARM_DOWN   14
 #define POS_VOLUME_ALARM_UP     15
 #define POS_PEEP_ALARM_DOWN     16
-#define POS_PEEP_ALARM_UP       17
+#define POS_PEEP_ALARM_UP       17 // no worky
 #define POS_IE_DOWN             18
 #define POS_IE_UP               19
 
@@ -112,35 +115,35 @@ bool test = false;
 void setup() {
   //for debugging
   Serial.begin(115200);
-   Serial.println("Init LCD");
+  Serial.println("Init LCD");
   //init LCD
   lcd.backlight();
   lcd.init();
   //print values void
-   Serial.println("Print letters");
+  Serial.println("Print letters");
   printLetters();
 
- /*Serial.println("Wacht op OK");
-  while(newData1 == 0 ){
-      recvWithEndMarkerSer1();
-      if (newData1 == true){
-        //processSerialPort(receivedChars1);
-        if (receivedChars1 == 'OK'){
-          Serial.println("Joepie!");
-        } else {
-          newData1 = false;
-        }
-        
-      }
-      for (int i = 0; i < numButtons; i++) {
-        buttons[i]=1;
-      }
-      serialSend();
-  }
-*/
+  /*Serial.println("Wacht op OK");
+    while(newData1 == 0 ){
+       recvWithEndMarkerSer1();
+       if (newData1 == true){
+         //processSerialPort(receivedChars1);
+         if (receivedChars1 == 'OK'){
+           Serial.println("Joepie!");
+         } else {
+           newData1 = false;
+         }
+
+       }
+       for (int i = 0; i < numButtons; i++) {
+         buttons[i]=1;
+       }
+       serialSend();
+    }
+  */
 
 
-  
+
   //declare all buttons
   pinMode(BUTTON_VOLUME_DOWN, INPUT_PULLUP);
   pinMode(BUTTON_VOLUME_UP, INPUT_PULLUP);
@@ -171,6 +174,7 @@ void loop() {
   buttonsRead();
   //array with buttons is filled with data
 
+
   //edit parameters
 
   //send parameters
@@ -179,7 +183,8 @@ void loop() {
     flag = false;
   }
   delay(10);
-  
+  //      flag = true;
+
   //Update screen
   printValues();
 
@@ -198,15 +203,15 @@ void buttonsRead() {
     //filter out any noise by setting a time buffer
     if ( (millis() - lastDebounceTime[0][i]) > debounceDelay) {
       if ( reading == HIGH && buttonPins[1][i] != HIGH) {
-        buttonPins[1][i] = LOW;
+        buttonPins[1][i] = reading;
         lastDebounceTime[0][i] = millis(); //set the current time
         lastDebounceTime[1][i] = 0; //reset the first time counter for jumpvalue
       }
       else if ( reading == LOW && buttonPins[1][i] != LOW) {
-        buttonPins[1][i] = HIGH;
+        buttonPins[1][i] = reading;
         lastDebounceTime[0][i] = millis(); //set the current time
 
-        if (lastDebounceTime[1][i] == 0)
+        if (lastDebounceTime[1][i] == 0) //this is for the jumpvalue. if the counter is zero
         {
           lastDebounceTime[1][i] = millis(); //set the current time to the first time counter for jumpvalue
           flag = true;
@@ -216,7 +221,29 @@ void buttonsRead() {
     }//close if(time buffer)
   }
 
-  
+  //Testmodule buttons
+  /*
+    for (int i = 0; i < numButtons; i++)
+    {
+    Serial.print(buttonPins[1][i]);
+    }
+    Serial.println();
+  */
+
+  //invert the numbers
+  for (int i = 0; i < numButtons; i++)
+  {
+    if (buttonPins[1][i] == 0) {
+      buttons[i] = 1;
+    }
+    else {
+      buttons[i] = 0;
+    }
+
+  }
+
+
+
   //make the buttons edit the values
   //RR
   RR = RR +  buttons[POS_RR_UP] * jumpValue(POS_RR_UP);
@@ -243,25 +270,25 @@ void buttonsRead() {
   // ADPP
   ADPP = ADPP +  buttons[POS_PEEP_ALARM_UP] * jumpValue(POS_PEEP_ALARM_UP);
   ADPP = ADPP -  buttons[POS_PEEP_ALARM_DOWN] * jumpValue(POS_PEEP_ALARM_DOWN);
-  
+
   //mode button here
   //if mode is VOLUME and button is pressed: goto PRESSURE
   if (buttons[POS_MODE] == 1)
   {
     MODE = !MODE;
-    clearValues();
   }
 
 
   if (buttons[POS_MUTE] == 1)
   {
     MUTE = !MUTE;
-    clearValues();
   }
 
 
   // TODO: hold, mute, start/stop
-  
+  if (flag) {
+    clearValues();
+  }
 
 }
 
@@ -345,7 +372,7 @@ void serialSend()
     Serial.print("ADPP=");
     Serial.println(ADPP);
   }
-    
+
   // MODE
   if (buttons[POS_MODE] == 1) {
     Serial.print("MODE=");
@@ -357,7 +384,7 @@ void serialSend()
     Serial.print("MUTE=");
     Serial.println(MUTE);
   }
-  
+
   // ACTIVE
   if (buttons[POS_START_STOP] == 1) {
     Serial.print("ACTIVE=");
@@ -368,7 +395,7 @@ void serialSend()
 
 /*void serialSendSpecific(){
   Serial.print();
-}*/
+  }*/
 
 void printValues() {
   lcd.setCursor(12, 2);
@@ -386,8 +413,8 @@ void printValues() {
   lcd.print(RR);
   lcd.setCursor(15, 1);
   lcd.print(TS);
-//  lcd.setCursor(3, 2);
-//  lcd.print(PP);
+  //  lcd.setCursor(3, 2);
+  //  lcd.print(PP);
   lcd.setCursor(7, 2);
   lcd.print(ADPP);
   lcd.setCursor(15, 3);
@@ -403,8 +430,8 @@ void printLetters()
   lcd.print("RR");
   lcd.setCursor(12, 1);
   lcd.print("TS");
-//  lcd.setCursor(0, 2);
-//  lcd.print("PP");
+  //  lcd.setCursor(0, 2);
+  //  lcd.print("PP");
   lcd.setCursor(12, 3);
   lcd.print("IE");
 }
@@ -434,23 +461,23 @@ void clearValues()
 }
 
 void recvWithEndMarkerSer1() {
-   static byte ndx = 0;
-   char endMarker = '\n';
-   char rc;
-   while (Serial.available() > 0 && newData1 == false) {
-     rc = Serial.read();
-     if (rc != endMarker) {
-       receivedChars1[ndx] = rc;
-       ndx++;
-       if (ndx >= numChars) {
-         ndx = numChars - 1;
-       }
-     }
-     else {
-       receivedChars1[ndx] = '\0'; // terminate the string
-       ndx = 0;
-       newData1 = true;
-       Serial.println(receivedChars1);
-     }
-   }
+  static byte ndx = 0;
+  char endMarker = '\n';
+  char rc;
+  while (Serial.available() > 0 && newData1 == false) {
+    rc = Serial.read();
+    if (rc != endMarker) {
+      receivedChars1[ndx] = rc;
+      ndx++;
+      if (ndx >= numChars) {
+        ndx = numChars - 1;
+      }
+    }
+    else {
+      receivedChars1[ndx] = '\0'; // terminate the string
+      ndx = 0;
+      newData1 = true;
+      Serial.println(receivedChars1);
+    }
+  }
 }
