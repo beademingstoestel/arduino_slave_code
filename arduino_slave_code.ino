@@ -1,8 +1,14 @@
 //comment
+//EEPROM branch
 #include <Wire.h>
 #include "LiquidCrystal_I2C.h"
 //#include "pins.h" //wiring volgens pcb ontwerp
 #include "pinsShield.h" //wegens andere wiring met voorlopig shield voor demo
+
+#include <EEPROM.h>
+
+/** the current address in the EEPROM (i.e. which byte we're going to write to next) **/
+
 
 
 //Constants Tim
@@ -51,8 +57,6 @@ const int minTS = 100;
 
 const int maxIE = 1;
 const int minIE = 3;
-
-
 
 bool MODE = false; // Mode (false = Pressure)
 bool MUTE = false; // Mute alarms (true = mute alarms)
@@ -133,6 +137,10 @@ int buttons [numButtons] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 bool test = false;
 bool alarm = false;
 
+int ints[] = {RR,VT,PK,TS,PP,IE,ADPK,ADVT,ADPP};
+bool bools[] = {MODE, MUTE, ACTIVE};
+
+
 void setup() {
 
 
@@ -146,6 +154,10 @@ void setup() {
 
   //Serial1.println("Print letters");
   printLetters();
+
+  //load from EEPROM
+  loadFromEEPROM();
+
 
   Serial1.println("Wacht op OK");
   while (newData1 == 0 ) {
@@ -191,6 +203,7 @@ void setup() {
   pinMode(BUTTON_PEEP_ALARM_UP, INPUT_PULLUP);
   pinMode(BUTTON_IE_DOWN, INPUT_PULLUP);
   pinMode(BUTTON_IE_UP, INPUT_PULLUP);
+
 }
 
 void loop() {
@@ -238,7 +251,7 @@ void loop() {
 
     }
 
-  }*/
+    }*/
 
 
 
@@ -347,11 +360,11 @@ void buttonsRead() {
   // VT
   if (VT < maxVT)
   {
-      VT = VT +  buttons[POS_VOLUME_UP]*50;
+    VT = VT +  buttons[POS_VOLUME_UP] * 50;
   }
   if (VT > minVT) //can only go down if higher than minimum
   {
-      VT = VT -  buttons[POS_VOLUME_DOWN]*50;
+    VT = VT -  buttons[POS_VOLUME_DOWN] * 50;
   }
 
 
@@ -381,18 +394,18 @@ void buttonsRead() {
   { //can go up if lower than maximum
     if (maxTS - TS < 10)
     { //can only jump if more than max jump from maximum
-    TS = TS +  buttons[POS_TRIG_UP] * jumpValue(POS_TRIG_UP);
+      TS = TS +  buttons[POS_TRIG_UP] * jumpValue(POS_TRIG_UP);
     } else {
-    TS = TS +  buttons[POS_TRIG_UP];
+      TS = TS +  buttons[POS_TRIG_UP];
     }
   }
   if (TS > minTS) //can only go down if higher than minimum
   {
     if (TS - minTS < 10)
     { //can only jump if more than max jump from minimum
-    TS = TS -  buttons[POS_TRIG_DOWN] * jumpValue(POS_TRIG_DOWN);
+      TS = TS -  buttons[POS_TRIG_DOWN] * jumpValue(POS_TRIG_DOWN);
     } else {
-    TS = TS -  buttons[POS_TRIG_DOWN];
+      TS = TS -  buttons[POS_TRIG_DOWN];
     }
   }
 
@@ -405,14 +418,14 @@ void buttonsRead() {
   if (IE > minIE) //can only go down if higher than minimum
   {
     IE = IE - buttons[POS_IE_DOWN];
-  } 
+  }
 
-//PP
+  //PP
   PP = PP +  buttons[POS_IE_UP] * jumpValue(POS_IE_UP);
   if (PP > 1) {
     PP = PP -  buttons[POS_IE_DOWN] * jumpValue(POS_IE_DOWN);
-  }  
-  
+  }
+
 
 
   // ADPK
@@ -454,7 +467,9 @@ void buttonsRead() {
   }
 
   if (flag) {
+    //button is pressed:
     clearValues();
+    saveToEEPROM();
   }
 
 }
@@ -705,23 +720,70 @@ void recvWithEndMarkerSer0() {
   //   # 128  (1 << 7) volume deviation exceeded
   //   # 256  (1 << 8) trigger timeout
 
-//zolang mute alarm niet wordt gedrukt
-while (!MUTE)
-{
+  //zolang mute alarm niet wordt gedrukt
+  while (!MUTE)
+  {
   //lcd flikkert
 
   Serial1.println("ALARM!");
   lcd.setCursor(1, 3);
   lcd.print("ALARM!");
 
-//TODO: audio
+  //TODO: audio
 
-//"alarm" komt op LCD
+  //"alarm" komt op LCD
   //type alarm komt op LCD
   buttonsRead();
-}
-Serial1.println("ALARM MUTED");
-lcd.setCursor(1, 3);
-lcd.print("       ");
+  }
+  Serial1.println("ALARM MUTED");
+  lcd.setCursor(1, 3);
+  lcd.print("       ");
 
-}*/
+  }*/
+
+
+void saveToEEPROM()
+{
+  //1 RR int
+  //2 VT int
+  //3 PK int
+  //4 TS int
+  //5 PP int
+  //6 IE int -> zenden als float
+  //7 ADPK int
+  //8 ADVT int
+  //9 ADPP int
+  //10 MODE bool
+  //11 MUTE bool
+  //12 ACTIVE bool
+
+  int eeAddress = 0;   //Location we want the data to be put.
+  // 9 ints
+  for (int i = 0; i < 9; i++) {
+    //One simple call, with the address first and the object second.
+    EEPROM.put(eeAddress, ints[i]);
+    eeAddress += sizeof(int); //Move address to the next byte after float 'f'
+  }
+  // 3 bools
+    for (int i = 0; i < 3; i++) {
+    //One simple call, with the address first and the object second.
+    EEPROM.put(eeAddress, bools[i]);
+    eeAddress += sizeof(bool); //Move address to the next byte after float 'f'
+  }
+}
+void loadFromEEPROM()
+{
+  int eeAddress = 0;   //Location we want the data to be put.
+  // 9 ints
+  for (int i = 0; i < 9; i++) {
+    //One simple call, with the address first and the object second.
+    EEPROM.get(eeAddress, ints[i]);
+    eeAddress += sizeof(int); //Move address to the next byte after float 'f'
+  }
+  // 3 bools
+    for (int i = 0; i < 3; i++) {
+    //One simple call, with the address first and the object second.
+    EEPROM.get(eeAddress, bools[i]);
+    eeAddress += sizeof(bool); //Move address to the next byte after float 'f'
+  }
+}
