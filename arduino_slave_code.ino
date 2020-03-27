@@ -348,12 +348,10 @@ void buttonsRead() {
   if (VT < maxVT)
   {
       VT = VT +  buttons[POS_VOLUME_UP]*50;
-    }
   }
   if (VT > minVT) //can only go down if higher than minimum
   {
       VT = VT -  buttons[POS_VOLUME_DOWN]*50;
-    }
   }
 
 
