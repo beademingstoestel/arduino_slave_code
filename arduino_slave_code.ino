@@ -1,3 +1,6 @@
+//This code goes onto the slave arduino that supports the controller
+
+
 //#include <Arduino.h>
 //#include <HardwareSerial.h>
 //#include <Print.h>
@@ -25,23 +28,39 @@ boolean newData1 = false;
 //Constants Hans
 
 // define bytes to send
-unsigned int RR = 0;    // Number of breaths per minute setting
-unsigned int VT = 0;    // Tidal volume= target to deliver
-unsigned int PK = 50;   //Peak pressure
-unsigned int TS = 0;    // Breath Trigger Sensitivity = amount the machine should look for
-unsigned int IE = 1;           // Inspiration-expiration rate
+unsigned int RR = 10;    // Number of breaths per minute setting 10-35BPM
+unsigned int VT = 200;    // Tidal volume= target to deliver 200-600ml
+unsigned int PK = 20;   //Peak pressure 20-50
+unsigned int TS = 3;    // Breath Trigger Sensitivity = amount the machine should look for
+unsigned int IE = 1;           // Inspiration-expiration rate 1-3
 // unsigned int PP = 0;    // PEEP Pressure = Max pressure to deliver --> Manueel instellen op peep valve
-
 unsigned int ADPK = 10; // Allowed Deviation Peak pressure
 unsigned int ADVT = 10; // Allowed Deviation Tidal Volume
 unsigned int ADPP = 5;  // Allowed Deviation PEEP
+
+const int maxRR = 35;
+const int minRR = 10;
+
+const int maxVT = 200;
+const int minVT = 600;
+
+const int maxPK = 20;
+const int minPK = 50;
+
+const int maxTS = 1;
+const int minTS = 100;
+
+const int maxIE = 1;
+const int minIE = 3;
+
+
 
 bool MODE = false; // Mode (false = Pressure)
 bool MUTE = false; // Mute alarms (true = mute alarms)
 bool ACTIVE = false; // Start/stop (true = start)
 
 bool flag = false;
-
+bool jumper = true;
 
 // constants won't change. They're used here to set pin numbers:
 int buttonState;             // the current reading from the input pin
@@ -86,6 +105,7 @@ int buttonPins[2][numButtons] = { {
     HIGH, HIGH, HIGH, HIGH, HIGH, HIGH, HIGH, HIGH, HIGH, HIGH, HIGH, HIGH, HIGH, HIGH, HIGH, HIGH, HIGH, HIGH, HIGH, HIGH
   }
 };
+
 int buttons [numButtons] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
 // Constants Loes
@@ -117,15 +137,15 @@ bool alarm = false;
 void setup() {
 
   Serial.begin(115200);
-  Serial.println("Init LCD");
+  //Serial.println("Init LCD");
   //init LCD
   lcd.backlight();
   lcd.init();
   //print values void
-  Serial.println("Print letters");
+  //Serial.println("Print letters");
   printLetters();
 
-  Serial.println("Wacht op OK");
+  //Serial.println("Wacht op OK");
   while (newData1 == 0 ) {
     recvWithEndMarkerSer1(); //keep looking
     if (newData1 == true) {
@@ -222,7 +242,7 @@ void loop() {
 
 
   if (alarm) {
-    alarmke();
+    wee_alarm();
   }
 
   delay(100);
@@ -298,47 +318,110 @@ void buttonsRead() {
 
 
   //make the buttons edit the values
+  //only jump if the limit is far enough
   //RR
-  RR = RR +  buttons[POS_RR_UP] * jumpValue(POS_RR_UP);
-  if (RR > 1)
-  {
-    RR = RR -  buttons[POS_RR_DOWN] * jumpValue(POS_RR_DOWN);
+  if (RR < maxRR)
+  { //can go up if lower than maximum
+    if (maxRR - RR < 10)
+    { //can only jump if more than max jump from maximum
+      RR = RR +  buttons[POS_RR_UP] * jumpValue(POS_RR_UP);
+    } else {
+      RR = RR +  buttons[POS_RR_UP];
+    }
   }
-  // VT
+  if (RR > minRR) //can only go down if higher than minimum
+  {
+    if (RR - minRR < 10)
+    { //can only jump if more than max jump from minimum
+      RR = RR -  buttons[POS_RR_DOWN] * jumpValue(POS_RR_DOWN);
+    } else {
+      RR = RR -  buttons[POS_RR_DOWN];
+    }
+  }
 
-  VT = VT +  buttons[POS_VOLUME_UP] * jumpValue(POS_VOLUME_UP);
-  if (VT > 1)
+
+  // VT
+  if (VT < maxVT)
+  { //can go up if lower than maximum
+    if (maxVT - VT < 10)
+    { //can only jump if more than max jump from maximum
+      VT = VT +  buttons[POS_VOLUME_UP] * jumpValue(POS_VOLUME_UP);
+    } else {
+      VT = VT +  buttons[POS_VOLUME_UP];
+    }
+  }
+  if (VT > minVT) //can only go down if higher than minimum
   {
-    VT = VT -  buttons[POS_VOLUME_DOWN] * jumpValue(POS_VOLUME_DOWN);
-  }  // PK
-  PK = PK +  buttons[POS_PRESSURE_UP] * jumpValue(POS_PRESSURE_UP);
-  if (PK > 1)
+    if (VT - minVT < 10) { //can only jump if more than max jump from minimum
+      VT = VT -  buttons[POS_VOLUME_DOWN] * jumpValue(POS_VOLUME_DOWN);
+    } else {
+      VT = VT -  buttons[POS_VOLUME_DOWN];
+    }
+  }
+
+
+  // PK
+  if (PK < maxPK)
+  { //can go up if lower than maximum
+    if (maxPK - PK < 10)
+    { //can only jump if more than max jump from maximum
+      PK = PK +  buttons[POS_PRESSURE_UP] * jumpValue(POS_PRESSURE_UP);
+    } else {
+      PK = PK +  buttons[POS_PRESSURE_UP] ;
+    }
+  }
+  if (PK > minPK) //can only go down if higher than minimum
   {
-    PK = PK -  buttons[POS_PRESSURE_DOWN] * jumpValue(POS_PRESSURE_DOWN);
-  }//TS
-  TS = TS +  buttons[POS_TRIG_UP] * jumpValue(POS_TRIG_UP);
-  if (TS > 1) 
+    if (PK - minPK < 10)
+    { //can only jump if more than max jump from minimum
+      PK = PK -  buttons[POS_PRESSURE_DOWN] * jumpValue(POS_PRESSURE_DOWN);
+    } else {
+      PK = PK -  buttons[POS_PRESSURE_DOWN];
+    }
+  }
+
+  //TS
+  if (TS < maxTS)
+  { //can go up if lower than maximum
+    if (maxTS - TS < 10)
+    { //can only jump if more than max jump from maximum
+    TS = TS +  buttons[POS_TRIG_UP] * jumpValue(POS_TRIG_UP);
+    } else {
+    TS = TS +  buttons[POS_TRIG_UP];
+    }
+  }
+  if (TS > minTS) //can only go down if higher than minimum
   {
+    if (TS - minTS < 10)
+    { //can only jump if more than max jump from minimum
     TS = TS -  buttons[POS_TRIG_DOWN] * jumpValue(POS_TRIG_DOWN);
-  }//IE
-  if (IE < 3) 
-  {
+    } else {
+    TS = TS -  buttons[POS_TRIG_DOWN];
+    }
+  }
+
+  //IE
+  if (IE < maxIE)
+  { //can go up if lower than maximum
     IE = IE + buttons[POS_IE_UP];
   }
-  if (IE > 1) 
+
+  if (IE > minIE) //can only go down if higher than minimum
   {
     IE = IE - buttons[POS_IE_DOWN];
   }
+
+
   // ADPK
 
   ADPK = ADPK +  buttons[POS_PRESSURE_ALARM_UP] * jumpValue(POS_PRESSURE_ALARM_UP);
-  if (ADPK > 1) 
+  if (ADPK > 1)
   {
     ADPK = ADPK -  buttons[POS_PRESSURE_ALARM_DOWN] * jumpValue(POS_PRESSURE_ALARM_DOWN);
-  } 
+  }
   // ADVT
   ADVT = ADVT +  buttons[POS_VOLUME_ALARM_UP] * jumpValue(POS_VOLUME_ALARM_UP);
-  if (ADVT > 1) 
+  if (ADVT > 1)
   {
     ADVT = ADVT -  buttons[POS_VOLUME_ALARM_DOWN] * jumpValue(POS_VOLUME_ALARM_DOWN);
   }
@@ -503,8 +586,6 @@ void printValues() {
     lcd.setCursor(0, 2);
     lcd.print("    ");
   }
-
-
   lcd.setCursor(17, 3);
   lcd.print(IE);
 }
@@ -576,7 +657,7 @@ void recvWithEndMarkerSer1() {
 
 
 void recvWithEndMarkerSer0() {
-  //this waits for confirmation over serial that the data is OK
+  //this looks for an alarm
 
   static byte ndx = 0;
   char endMarker = '\n';
@@ -599,7 +680,7 @@ void recvWithEndMarkerSer0() {
   }
 }
 
-void alarmke()
+void wee_alarm()
 {
   /*
     # 1    (1 << 0) Mechanical failure
@@ -620,6 +701,7 @@ void alarmke()
     Serial.println("ALARM!");
     lcd.setCursor(1, 3);
     lcd.print("ALARM!");
+    //TODO: SCREAM
     //"alarm" komt op LCD
     //type alarm komt op LCD
     buttonsRead();
