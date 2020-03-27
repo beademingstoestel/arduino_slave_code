@@ -1,4 +1,4 @@
-
+//comment
 #include <Wire.h>
 #include "LiquidCrystal_I2C.h"
 //#include "pins.h" //wiring volgens pcb ontwerp
