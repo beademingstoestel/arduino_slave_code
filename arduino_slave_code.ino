@@ -229,12 +229,12 @@ void loop() {
   //iedere seconde data dumpen
   k++;
   al++;
-  if (al > 100)
+  if (al > 100) // te lang geen alive van laptop
   {
     alarm = true;
   }
 
-  if (k > 9) {
+  if (k > 9) {//iedere seconde ongeveer
     //dump all data
     for (int i = 0; i < numButtons; i++) {
       buttons[i] = 1;
@@ -300,39 +300,49 @@ void buttonsRead() {
   //make the buttons edit the values
   //RR
   RR = RR +  buttons[POS_RR_UP] * jumpValue(POS_RR_UP);
-  if (RR > 1) {
+  if (RR > 1)
+  {
     RR = RR -  buttons[POS_RR_DOWN] * jumpValue(POS_RR_DOWN);
   }
   // VT
 
   VT = VT +  buttons[POS_VOLUME_UP] * jumpValue(POS_VOLUME_UP);
-  if (VT > 1) {
+  if (VT > 1)
+  {
     VT = VT -  buttons[POS_VOLUME_DOWN] * jumpValue(POS_VOLUME_DOWN);
   }  // PK
   PK = PK +  buttons[POS_PRESSURE_UP] * jumpValue(POS_PRESSURE_UP);
-  if (PK > 1) {
+  if (PK > 1)
+  {
     PK = PK -  buttons[POS_PRESSURE_DOWN] * jumpValue(POS_PRESSURE_DOWN);
   }//TS
   TS = TS +  buttons[POS_TRIG_UP] * jumpValue(POS_TRIG_UP);
-  if (TS > 1) {
+  if (TS > 1) 
+  {
     TS = TS -  buttons[POS_TRIG_DOWN] * jumpValue(POS_TRIG_DOWN);
   }//IE
-  if (IE < 3) {
+  if (IE < 3) 
+  {
     IE = IE + buttons[POS_IE_UP];
   }
-  if (IE > 1) {
+  if (IE > 1) 
+  {
     IE = IE - buttons[POS_IE_DOWN];
   }
   // ADPK
 
   ADPK = ADPK +  buttons[POS_PRESSURE_ALARM_UP] * jumpValue(POS_PRESSURE_ALARM_UP);
-  if (ADPK > 1) {
+  if (ADPK > 1) 
+  {
     ADPK = ADPK -  buttons[POS_PRESSURE_ALARM_DOWN] * jumpValue(POS_PRESSURE_ALARM_DOWN);
-  } // ADVT
+  } 
+  // ADVT
   ADVT = ADVT +  buttons[POS_VOLUME_ALARM_UP] * jumpValue(POS_VOLUME_ALARM_UP);
-  if (ADVT > 1) {
+  if (ADVT > 1) 
+  {
     ADVT = ADVT -  buttons[POS_VOLUME_ALARM_DOWN] * jumpValue(POS_VOLUME_ALARM_DOWN);
-  }// ADPP
+  }
+  // ADPP
   ADPP = ADPP +  buttons[POS_PEEP_ALARM_UP] * jumpValue(POS_PEEP_ALARM_UP);
   if (ADPP > 1) {
     ADPP = ADPP -  buttons[POS_PEEP_ALARM_DOWN] * jumpValue(POS_PEEP_ALARM_DOWN);
