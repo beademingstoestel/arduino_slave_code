@@ -106,7 +106,7 @@ int buttons [numButtons] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 #define POS_VOLUME_ALARM_DOWN   14
 #define POS_VOLUME_ALARM_UP     15
 #define POS_PEEP_ALARM_DOWN     16
-#define POS_PEEP_ALARM_UP       17 // no worky
+#define POS_PEEP_ALARM_UP       17 // worky :)
 #define POS_IE_DOWN             18
 #define POS_IE_UP               19
 
@@ -117,12 +117,12 @@ bool alarm = false;
 void setup() {
 
   Serial1.begin(115200);
-  //Serial1.println("Init LCD");
+  //Serial.println("Init LCD");
   //init LCD
   lcd.backlight();
   lcd.init();
   //print values void
-  Serial1.println("Print letters");
+  //Serial1.println("Print letters");
   printLetters();
 
   Serial1.println("Wacht op OK");
@@ -192,7 +192,7 @@ void loop() {
   //Update screen
   printValues();
   //wacht op PC alive: indien niet: alarm
-  while (Serial1.available() > 0) {
+  /*while (Serial1.available() > 0) {
     recvWithEndMarkerSer1(); //keep looking
     if (newData0 == true) {
       if (receivedChars0[0] == 'A')
@@ -201,12 +201,12 @@ void loop() {
         newData0 = false;
         if (alarm) { //als het alarm actief was
           alarm = false;
-          //Serial.print("Back Alive.");
+          //Serial1.print("Back Alive.");
           al = 0;
         }
         else // als het alarm niet actief was
         {
-          //Serial.print("Still Alive.");
+          //Serial1.print("Still Alive.");
           alarm = false;
           al = 0;
         }
@@ -216,32 +216,32 @@ void loop() {
 
     }
 
-  }
+  }*/
 
 
 
 
-  if (alarm) {
+  /*if (alarm) {
     alarmInitiated();
-  }
+    }
 
-  delay(100);
-  //iedere seconde data dumpen
-  k++;
-  al++;
-  if (al > 100)
-  {
+    delay(100);
+    //iedere seconde data dumpen
+    k++;
+    al++;
+    if (al > 100)
+    {
     alarm = true;
-  }
+    }
 
-  /*if (k > 9) {
+    if (k > 9) {
     //dump all data
     for (int i = 0; i < numButtons; i++) {
       buttons[i] = 1;
     }
     serialSend();
     k = 0;
-  }*/ //efkes niet elke seconde data dumpen
+    }*/ //efkes niet elke seconde data dumpen
 
 
 }
@@ -305,9 +305,11 @@ void buttonsRead() {
   }
   // VT
 
-  VT = VT +  buttons[POS_VOLUME_UP] * jumpValue(POS_VOLUME_UP);
+  //VT = VT +  buttons[POS_VOLUME_UP] * jumpValue(POS_VOLUME_UP);
+  VT = VT +  buttons[POS_VOLUME_UP] * 50;
   if (VT > 1) {
-    VT = VT -  buttons[POS_VOLUME_DOWN] * jumpValue(POS_VOLUME_DOWN);
+    //VT = VT -  buttons[POS_VOLUME_DOWN] * jumpValue(POS_VOLUME_DOWN);
+    VT = VT -  buttons[POS_VOLUME_DOWN] * 50;
   }  // PK
   PK = PK +  buttons[POS_PRESSURE_UP] * jumpValue(POS_PRESSURE_UP);
   if (PK > 1) {
@@ -349,15 +351,18 @@ void buttonsRead() {
     delay(50);
   }
 
-
   if (buttons[POS_MUTE] == 1)
   {
     MUTE = !MUTE;
     delay(50);
   }
 
+  if (buttons[POS_START_STOP] == 1)
+  {
+    ACTIVE = !ACTIVE;
+    delay(50);
+  }
 
-  // TODO: hold, mute, start/stop
   if (flag) {
     clearValues();
   }
@@ -424,7 +429,6 @@ void serialSend()
     Serial1.print("PP=");
     Serial1.println(PP);
   }
-  // PP --> kunnen we niet doorsturen, nu dus wel weer :)
 
   // IE op positie HOLD
   if (buttons[POS_HOLD] == 1) {
@@ -476,7 +480,8 @@ void serialSend()
 
 }
 
-void printValues() {
+void printValues()
+{
   lcd.setCursor(12, 2);
   if (MODE == true) lcd.print("VOLUME");
   if (MODE == false) lcd.print("PRESSURE");
@@ -497,11 +502,11 @@ void printValues() {
   lcd.setCursor(7, 2);
   lcd.print(ADPP);
   if (MUTE) {
-    lcd.setCursor(0, 2);
+    lcd.setCursor(0, 3);
     lcd.print("MUTE");
   }
   else {
-    lcd.setCursor(0, 2);
+    lcd.setCursor(0, 3);
     lcd.print("    ");
   }
 
@@ -577,7 +582,7 @@ void recvWithEndMarkerSer1() {
 
 
 void recvWithEndMarkerSer0() {
-  //this waits for confirmation over Serial1 that the data is OK
+  //this waits for confirmation over Serial that the data is OK
 
   static byte ndx = 0;
   char endMarker = '\n';
@@ -600,33 +605,32 @@ void recvWithEndMarkerSer0() {
   }
 }
 
-void alarmInitiated()
-{
-  /*
-    # 1    (1 << 0) Mechanical failure
-    # 2    (1 << 1) Power loss
-    # 4    (1 << 2) Watchdog Timout (connection loss)
-    # 8    (1 << 3) no pressure
-    # 16   (1 << 4) no flow
-    # 32   (1 << 5) peak pressure deviation exceeded
-    # 64   (1 << 6) peep deviation exceeded
-    # 128  (1 << 7) volume deviation exceeded
-    # 256  (1 << 8) trigger timeout
-  */
-  //zolang mute alarm niet wordt gedrukt
-  while (!MUTE)
+/*void alarmInitiated()
   {
-    //lcd flikkert
+  //   # 1    (1 << 0) Mechanical failure
+  //   # 2    (1 << 1) Power loss
+  //   # 4    (1 << 2) Watchdog Timout (connection loss)
+  //   # 8    (1 << 3) no pressure
+  //   # 16   (1 << 4) no flow
+  //   # 32   (1 << 5) peak pressure deviation exceeded
+  //   # 64   (1 << 6) peep deviation exceeded
+  //   # 128  (1 << 7) volume deviation exceeded
+  //   # 256  (1 << 8) trigger timeout
 
-    Serial1.println("ALARM!");
-    lcd.setCursor(1, 3);
-    lcd.print("ALARM!");
-    //"alarm" komt op LCD
-    //type alarm komt op LCD
-    buttonsRead();
-  }
-  Serial1.println("ALARM MUTED");
+//zolang mute alarm niet wordt gedrukt
+while (!MUTE)
+{
+  //lcd flikkert
+
+  Serial1.println("ALARM!");
   lcd.setCursor(1, 3);
-  lcd.print("       ");
-
+  lcd.print("ALARM!");
+  //"alarm" komt op LCD
+  //type alarm komt op LCD
+  buttonsRead();
 }
+Serial1.println("ALARM MUTED");
+lcd.setCursor(1, 3);
+lcd.print("       ");
+
+}*/
